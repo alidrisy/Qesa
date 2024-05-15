@@ -5,9 +5,10 @@ import {
   Pressable,
   Text,
   StatusBar,
+  Image,
 } from "react-native";
 import { Video, ResizeMode } from "expo-av";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   MaterialIcons,
   Fontisto,
@@ -21,20 +22,11 @@ import Animated, {
   withSpring,
   Easing,
   runOnJS,
-  withSequence,
 } from "react-native-reanimated";
 import InfoBar from "./InfoBar";
 import SeekBar from "./SeekBar";
 import { Share } from "react-native";
-import Toast from "react-native-toast-message";
-
-const toastConfig = {
-  tomatoToast: ({ text1, props }) => (
-    <View className='h-8 z-40 min-w-[150px] justify-center items-center bg-stone-300/50 rounded-full'>
-      <Text className='text-white px-3'>{text1}</Text>
-    </View>
-  ),
-};
+import Comments from "./Comments";
 
 let timer = null;
 const TIMEOUT = 200;
@@ -54,8 +46,10 @@ const debounce = (onSingle, onDouble) => {
 
 const VideoComponent = ({ shouldPlay, videoSource }) => {
   const video = useRef();
+  const commentsDrawerRef = useRef(null);
   const [status, setStatus] = useState();
   const [tap, setTap] = useState("...");
+  const [vidId, setVidId] = useState(null);
 
   const [isLiked, setIsLiked] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -201,6 +195,7 @@ const VideoComponent = ({ shouldPlay, videoSource }) => {
 
   return (
     <Pressable onPress={handlePress} className='flex-1'>
+      <Comments commentsDrawerRef={commentsDrawerRef} />
       <View style={styles.videoContainer}>
         {!status?.isPlaying && (
           <View className='absolute z-30'>
@@ -214,7 +209,9 @@ const VideoComponent = ({ shouldPlay, videoSource }) => {
         )}
         <Video
           ref={video}
-          source={{ uri: videoSource }}
+          source={{
+            uri: videoSource,
+          }}
           className='h-full'
           isLooping
           resizeMode={ResizeMode.CONTAIN}
@@ -222,7 +219,16 @@ const VideoComponent = ({ shouldPlay, videoSource }) => {
           useNativeControls={false}
           onPlaybackStatusUpdate={onPlaybackStatusUpdate}
         />
-        <Toast config={toastConfig} />
+        {/* ) : (
+          <Image
+            source={{
+              uri: videoSource,
+            }}
+            className='h-full'
+            resizeMode={ResizeMode.COVER}
+            style={{ aspectRatio: 9 / 16 }}
+          />
+        )} */}
         <Animated.View style={imgLikeStyle}>
           <MaterialIcons name='favorite' size={120} color='#f3f4f6' />
         </Animated.View>
@@ -240,7 +246,10 @@ const VideoComponent = ({ shouldPlay, videoSource }) => {
             </Animated.View>
             <Text className='text-white'>500</Text>
           </Pressable>
-          <Pressable className='flex items-center justify-center space-y-[4px]'>
+          <Pressable
+            onPress={() => commentsDrawerRef.current.open()}
+            className='flex items-center justify-center space-y-[4px]'
+          >
             <Ionicons
               name='chatbubble-ellipses-sharp'
               size={30}
@@ -270,16 +279,16 @@ const VideoComponent = ({ shouldPlay, videoSource }) => {
             },
           }}
         />
+        <SeekBar
+          onValueChange={onValueChange}
+          currentPosition={progress}
+          trackLength={duration}
+        />
       </View>
       <StatusBar
         barStyle={"light-content"}
         translucent
         backgroundColor='transparent'
-      />
-      <SeekBar
-        onValueChange={onValueChange}
-        currentPosition={progress}
-        trackLength={duration}
       />
     </Pressable>
   );
@@ -293,6 +302,7 @@ const styles = StyleSheet.create({
     height: Dimensions.get("screen").height,
     justifyContent: "center",
     alignItems: "center",
+    position: "relative",
   },
 });
 

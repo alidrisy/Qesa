@@ -3,18 +3,20 @@ import { View } from "react-native";
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import * as NavigationBar from 'expo-navigation-bar';
 import { useState } from "react";
+import { enableScreens } from "react-native-screens";
+
+enableScreens();
 
 const TabsLayout = () => {
   NavigationBar.setBackgroundColorAsync('#0c0a09')
-
   return (
-    <Tabs screenOptions={{
+    <Tabs  detachInactiveScreens={true} screenOptions={{
       tabBarHideOnKeyboard: true,
       tabBarStyle: {height: 65, position: "relative"},
       tabBarLabelStyle: {paddingBottom: 8, marginTop: -10},
     }}>
 
-      <Tabs.Screen  name="Home" options={{
+      <Tabs.Screen  name="MainScreen" options={{
         tabBarIcon: ({ color }) =>{
           const active = color !== 'white' ? <Ionicons name="home-outline" size={24}    color={color} /> : <Ionicons name="home-sharp" size={24} color={color} />;
         return (
@@ -48,6 +50,7 @@ const TabsLayout = () => {
           </View>
         );
       },
+        headerShown: false,
         tabBarLabel: '',
         tabBarShowLabel: true,
         tabBarActiveTintColor: "black",
