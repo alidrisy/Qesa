@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from models.user import User
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -23,6 +23,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 
 class RespondeUser(BaseModel):
+    """Response user class."""
+
     email: str
     username: str
     password: str
@@ -43,6 +45,7 @@ class TokenData(BaseModel):
     """Token data class."""
 
     username: str | None = None
+    email: str | None = None
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -97,7 +100,6 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print(payload)
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
@@ -114,7 +116,7 @@ async def get_current_active_user(
     current_user: Annotated[RespondeUser, Depends(get_current_user)],
 ):
     """Get current active user."""
-    if not current_user.validated:
+    if not current_user.is_validated:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 

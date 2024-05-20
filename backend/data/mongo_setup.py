@@ -1,3 +1,5 @@
+"""This module initializes the connection to the MongoDB database."""
+
 import mongoengine
 
 
