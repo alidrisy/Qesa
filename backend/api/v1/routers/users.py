@@ -62,7 +62,7 @@ async def read_own_videos(
     current_user: Annotated[RespondeUser, Depends(get_current_active_user)],
 ):
     """Read user videos."""
-    videos = Video.objects(user_id=current_user.id).skip(0).limit(30)
+    videos = Video.objects(creator=current_user).skip(0).limit(30)
     all_videos = []
     for video in videos:
         all_videos.append(video.to_dict())

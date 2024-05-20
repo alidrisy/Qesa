@@ -11,7 +11,9 @@ class Comment(BaseModel, mongoengine.Document):
     """Comment model for the application."""
 
     text = mongoengine.StringField(required=True)
-    user_id = mongoengine.ObjectIdField(required=True)
+    creator = mongoengine.ReferenceField(
+        "User", required=True, reverse_delete_rule=mongoengine.CASCADE
+    )
     video_id = mongoengine.ObjectIdField(required=True)
 
     def save(self, *args, **kwargs):
@@ -24,19 +26,11 @@ class Comment(BaseModel, mongoengine.Document):
 
     def to_dict(self):
         """Convert the model to a dictionary."""
-        from models.user import User
-
         comments_data = self.to_mongo().to_dict()
         comments_data["id"] = str(comments_data["_id"])
         comments_data["video_id"] = str(comments_data["video_id"])
-        creator_data = User.objects(id=comments_data["user_id"]).first().to_dict()
-        comments_data["creator"] = {
-            "id": creator_data["id"],
-            "username": creator_data["username"],
-            "profile_picture": creator_data["profile_picture"],
-        }
+        comments_data["creator"] = self.creator.to_dict_summary()
         comments_data.pop("_id")
-        comments_data.pop("user_id")
         comments_data["created_date"] = comments_data["created_date"].strftime(time)
         comments_data["updated_date"] = comments_data["updated_date"].strftime(time)
         return comments_data

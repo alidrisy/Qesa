@@ -143,7 +143,7 @@ async def verification_email(validation: Virifcation, email: str) -> Token:
         )
 
 
-@router.post("/resend-verification-email", tags=["auth"])
+@router.get("/resend-verification-email", tags=["auth"])
 async def resend_verification_email(
     email: str,
     background_tasks: BackgroundTasks,

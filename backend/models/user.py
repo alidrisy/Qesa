@@ -1,7 +1,6 @@
 import mongoengine
 from models.base_model import BaseModel
 from datetime import datetime
-from models.video import Video
 
 time = "%Y-%m-%dT%H:%M:%S.%f"
 
@@ -20,7 +19,7 @@ class User(BaseModel, mongoengine.Document):
     following = mongoengine.IntField(default=0)
     is_validated = mongoengine.BooleanField(default=False)
 
-    def to_dict(self, user_id: str | None = None):
+    def to_dict(self):
         """Convert the model to a dictionary."""
         user_data = self.to_mongo().to_dict()
         user_data["id"] = str(user_data["_id"])
@@ -30,9 +29,17 @@ class User(BaseModel, mongoengine.Document):
 
         user_data["created_date"] = user_data["created_date"].strftime(time)
         user_data["updated_date"] = user_data["updated_date"].strftime(time)
-        if user_id:
-            user_data["is_follow"] = self.is_follow(user_id)
         return user_data
+
+    def to_dict_summary(self, target=None):
+        """Convert the model to a dictionary."""
+        user_data = self.to_mongo().to_dict()
+        return {
+            "id": str(user_data["_id"]),
+            "username": user_data["username"],
+            "profile_picture": user_data["profile_picture"],
+            "is_follow": self.is_follow(target),
+        }
 
     def update_model(self, **kwargs):
         """Update the model with the given key value pairs."""
@@ -43,16 +50,11 @@ class User(BaseModel, mongoengine.Document):
         kwargs["updated_date"] = datetime.now()
         return super().update(**kwargs)
 
-    def is_follow(self, user_id):
+    def is_follow(self, target):
         """Check if the video is liked by the user."""
         from models.follow import Follow
 
-        return Follow.objects(follower=self, following__id=user_id).count() > 0
-
-    def delete(self):
-        """Delete the user and all the related data."""
-        Video.objects(user_id=self.id).delete()
-        return super().delete()
+        return Follow.objects(follower=self, following=target).count() > 0
 
     meta = {
         "collection": "users",

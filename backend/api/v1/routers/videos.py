@@ -1,9 +1,10 @@
 """Videos endpoints."""
 
 from models.video import Video
+from models.user import User
 from api.v1.routers import router
 from fastapi.responses import JSONResponse
-from fastapi import Depends, Response, status, BackgroundTasks
+from fastapi import Depends, Response, status
 from api.v1.dependencies.videos_depends import *
 from pydantic import BaseModel
 
@@ -26,12 +27,12 @@ class UpdateVideo(BaseModel):
 
 @router.post("/videos", tags=["videos"])
 async def create_video(
-    video: NewVideo, user_id: Annotated[str, Depends(get_current_active_user_id)]
+    video: NewVideo, user: Annotated[RespondeUser, Depends(get_current_active_user)]
 ):
     """Create a new video."""
     try:
         video_data = video.dict()
-        video_data["user_id"] = user_id
+        video_data["creator"] = user
         new_video = Video(**video_data)
         new_video.save()
         return JSONResponse(new_video.to_dict(), status_code=201)
@@ -44,15 +45,20 @@ async def create_video(
 
 
 @router.get("/videos", tags=["videos"])
-async def get_videos(page: int, limit: int, user_id: str | None = None):
+async def get_videos(
+    page: int,
+    limit: int,
+    user: Annotated[User, Depends(get_current_user)],
+):
     """Logic to retrieve all videos"""
+    print(user.to_dict())
     try:
         videos = Video.objects().skip(page * limit).limit(limit)
         all_videos = []
         if not videos:
             return JSONResponse({"error": "No videos found for now."}, status_code=404)
         for video in videos:
-            all_videos.append(video.to_dict(user_id))
+            all_videos.append(video.to_dict(user))
         return JSONResponse(all_videos)
     except Exception as e:
         print(e)

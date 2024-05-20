@@ -17,7 +17,9 @@ class Video(BaseModel, mongoengine.Document):
     video_url = mongoengine.StringField(required=True)
     thumbnail_url = mongoengine.StringField(required=True)
     description = mongoengine.StringField(required=True)
-    user_id = mongoengine.ObjectIdField(required=True)
+    creator = mongoengine.ReferenceField(
+        "User", required=True, reverse_delete_rule=mongoengine.CASCADE
+    )
     tags = mongoengine.ListField(mongoengine.StringField(), default=[])
     likes = mongoengine.IntField(default=0)
     bookmarks = mongoengine.IntField(default=0)
@@ -25,30 +27,20 @@ class Video(BaseModel, mongoengine.Document):
     views = mongoengine.IntField(default=0)
     comments = mongoengine.IntField(default=0)
 
-    def to_dict(self, user_id: str | None = None):
+    def to_dict(self, user=None):
         """Convert the model to a dictionary."""
-        from models.user import User
 
         video_data = self.to_mongo().to_dict()
         video_data["id"] = str(video_data["_id"])
-        creator_data = (
-            User.objects(id=video_data["user_id"])
-            .first()
-            .to_dict(video_data["user_id"])
-        )
-        video_data["creator"] = {
-            "id": creator_data["id"],
-            "username": creator_data["username"],
-            "profile_picture": creator_data["profile_picture"],
-            "is_follow": creator_data["is_follow"],
-        }
+        video_data["creator"] = self.creator.to_dict_summary(user)
         video_data.pop("_id")
-        video_data.pop("user_id")
         video_data["created_date"] = video_data["created_date"].strftime(time)
         video_data["updated_date"] = video_data["updated_date"].strftime(time)
-        if user_id:
-            video_data["is_liked"] = self.is_liked(user_id)
-            video_data["is_bookmarked"] = self.is_bookmarked(user_id)
+        if user:
+            video_data["is_liked"] = self.is_liked(video_data["creator"]["id"])
+            video_data["is_bookmarked"] = self.is_bookmarked(
+                video_data["creator"]["id"]
+            )
         return video_data
 
     def update_model(self, **kwargs):
@@ -71,4 +63,4 @@ class Video(BaseModel, mongoengine.Document):
         Like.objects(video_id=self.id).delete()
         return super().delete()
 
-    meta = {"collection": "videos", "alias": "core", "indexes": ["user_id"]}
+    meta = {"collection": "videos", "alias": "core", "indexes": ["creator"]}

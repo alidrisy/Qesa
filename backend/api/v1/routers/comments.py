@@ -5,35 +5,29 @@ from models.video import Video
 from api.v1.routers import router
 from fastapi.responses import JSONResponse
 from fastapi import Depends, Response, status
-from api.v1.dependencies.videos_depends import get_current_active_user_id, get_user_id
-from pydantic import BaseModel
-from typing import Annotated
+from api.v1.dependencies.videos_depends import (
+    get_current_active_user,
+    get_current_active_user_id,
+)
+from typing import Annotated, List
+from api.v1.pydantic_models.comments_models import (
+    NewComment,
+    UpdateComment,
+    CommentOut,
+)
 
 
-class NewComment(BaseModel):
-    """New comment schema."""
-
-    text: str
-    video_id: str
-
-
-class UpdateComment(BaseModel):
-    """Update comment schema."""
-
-    text: str
-
-
-@router.post("/comments", tags=["comments"])
+@router.post("/comments", tags=["comments"], response_model=CommentOut, status_code=201)
 async def create_comment(
-    comment: NewComment, user_id: Annotated[str, Depends(get_current_active_user_id)]
+    comment: NewComment, user: Annotated[str, Depends(get_current_active_user)]
 ):
     """Create a new comment."""
     try:
         comment_data = comment.dict()
-        comment_data["user_id"] = user_id
+        comment_data["creator"] = user
         new_comment = Comment(**comment_data)
         new_comment.save()
-        return JSONResponse(new_comment.to_dict(), status_code=201)
+        return JSONResponse(CommentOut(new_comment.to_dict()), status_code=201)
     except Exception as e:
         print(e)
         return JSONResponse(
@@ -42,7 +36,7 @@ async def create_comment(
         )
 
 
-@router.get("/comments/{video_id}", tags=["comments"])
+@router.get("/comments/{video_id}", tags=["comments"], response_model=List[CommentOut])
 async def get_comments(page: int, limit: int):
     """Logic to retrieve all comments for a video."""
     try:
@@ -51,7 +45,8 @@ async def get_comments(page: int, limit: int):
         if not comments:
             return JSONResponse({"error": "No comments found."}, status_code=404)
         for comment in comments:
-            all_comments.append(comment.to_dict())
+            all_comments.append(CommentOut(comment.to_dict()))
+
         return JSONResponse(all_comments)
     except Exception as e:
         print(e)
@@ -61,7 +56,9 @@ async def get_comments(page: int, limit: int):
         )
 
 
-@router.put("/comments/{id}", tags=["comments"])
+@router.put(
+    "/comments/{id}", tags=["comments"], response_model=CommentOut, status_code=202
+)
 def update_comment(
     comment_id: str,
     comment: UpdateComment,
@@ -77,7 +74,7 @@ def update_comment(
                 status_code=404,
             )
         comment.update_model(**comment_data)
-        return JSONResponse({"message": "Comment updated successfully"})
+        return JSONResponse(CommentOut(comment.to_dict()), status_code=202)
     except Exception as e:
         print(e)
         return JSONResponse(
@@ -86,7 +83,11 @@ def update_comment(
         )
 
 
-@router.delete("/comments/{id}", tags=["comments"])
+@router.delete(
+    "/comments/{id}",
+    tags=["comments"],
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 def delete_comment(
     id: str,
     user_id: Annotated[str, Depends(get_current_active_user_id)],
