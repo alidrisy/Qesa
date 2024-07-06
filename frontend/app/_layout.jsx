@@ -3,10 +3,11 @@ import { useEffect } from "react";
 import { Stack, SplashScreen } from "expo-router";
 
 import { useFonts } from "expo-font";
+import { AuthProvider } from "../context/AuthProvider";
 
 SplashScreen.preventAutoHideAsync();
 
-const RootLayout = () => {
+const StackLayout = () => {
   const [fontsLoaded, error] = useFonts({
     "Nunito-EtraLight": require("../assets/fonts/Nunito-ExtraLight.ttf"),
     "Nunito-Light": require("../assets/fonts/Nunito-Light.ttf"),
@@ -37,7 +38,17 @@ const RootLayout = () => {
     <Stack>
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(user)" options={{ headerShown: false }} />
     </Stack>
+  );
+};
+
+const RootLayout = () => {
+  return (
+    <AuthProvider>
+      <StackLayout />
+    </AuthProvider>
   );
 };
 

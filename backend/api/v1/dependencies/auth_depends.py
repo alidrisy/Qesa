@@ -1,7 +1,7 @@
 """Authentication depends."""
 
 from datetime import datetime, timedelta, timezone
-from typing import Annotated
+from typing import Annotated, Any
 from models.user import User
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -25,6 +25,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 class RespondeUser(BaseModel):
     """Response user class."""
 
+    id: Any
     email: str
     username: str
     password: str

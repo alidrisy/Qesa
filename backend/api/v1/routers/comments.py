@@ -1,7 +1,6 @@
 """Comments API endpoints."""
 
 from models.comment import Comment
-from models.video import Video
 from api.v1.routers import router
 from fastapi.responses import JSONResponse
 from fastapi import Depends, Response, status

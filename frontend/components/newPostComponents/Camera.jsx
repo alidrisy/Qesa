@@ -10,9 +10,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { manipulateAsync, FlipType, SaveFormat } from "expo-image-manipulator";
-import { router } from "expo-router";
 import MediaPicker from "./MediaPicker";
-import { requestMicrophonePermission } from "../utils/requestPermissions";
+import { requestMicrophonePermission } from "../../utils/requestPermissions";
 import {
   PinchGestureHandler,
   GestureHandlerRootView,
@@ -21,8 +20,8 @@ import Timer from "./Timer";
 import PreviewImage from "./PreviewImage";
 
 export default function QSCamera({ handleBack }) {
-  const [type, setType] = useState(CameraType.back);
-  const [flashMode, setFlashMode] = useState(FlashMode.off);
+  const [type, setType] = useState('back');
+  const [flashMode, setFlashMode] = useState('off');
   const [previewVisible, setPreviewVisible] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [isRrecording, setIsRrecording] = useState(false);
@@ -39,7 +38,7 @@ export default function QSCamera({ handleBack }) {
 
   function toggleCameraType() {
     setType((current) =>
-      current === CameraType.back ? CameraType.front : CameraType.back,
+      current === 'back' ? 'front' : 'back',
     );
   }
 
@@ -49,24 +48,8 @@ export default function QSCamera({ handleBack }) {
 
   function toggleFlashMode() {
     setFlashMode((current) =>
-      current === FlashMode.off ? FlashMode.on : FlashMode.off,
+      current === 'off' ? 'on' : 'off',
     );
-  }
-
-  async function takePicture() {
-    if (!camera.current && !cameraReady) return;
-    let photo = await camera.current.takePictureAsync();
-    if (type === CameraType.front) {
-      photo = await manipulateAsync(
-        photo.uri,
-        [{ rotate: 180 }, { flip: FlipType.Vertical }],
-        { compress: 1, format: SaveFormat.PNG },
-      );
-    }
-    console.log(photo);
-    setImages([...images, photo]);
-    setPreviewVisible(true);
-    console.log(images);
   }
 
   async function takeVideo() {
@@ -156,22 +139,22 @@ export default function QSCamera({ handleBack }) {
               ref={camera}
             >
               <View className='flex-1 w-full justify-between items-center bg-transparent py-4 px-4'>
-                <View className='flex-row w-full justify-between items-center bg-transparent'>
-                  <TouchableOpacity
+                <View className={!isRrecording ? 'flex-row w-full justify-between items-center bg-transparent' : 'flex-row w-full justify-center items-center bg-transparent'}>
+                {!isRrecording &&  <TouchableOpacity
                     className='h-12'
                     onPress={handleBack}
                   >
                     <Ionicons name='close-outline' size={36} color='white' />
-                  </TouchableOpacity>
+                  </TouchableOpacity>}
                   <View
                     className={
                       isRrecording &&
-                      "w-16 justify-center items-center h-8 bg-blue-600 rounded-full"
+                      "w-16 justify-center items-center h-8 bg-red-600 rounded-full"
                     }
                   >
                     {isRrecording && <Timer className="text-white" />}
                   </View>
-                  <TouchableOpacity
+                  {!isRrecording && <TouchableOpacity
                     className='items-center w-12 h-12 justify-center bg-gray-900/50 rounded-full'
                     onPress={toggleFlashMode}
                   >
@@ -184,34 +167,36 @@ export default function QSCamera({ handleBack }) {
                     ) : (
                       <Ionicons name='flash-outline' size={25} color='white' />
                     )}
-                  </TouchableOpacity>
+                  </TouchableOpacity>}
                 </View>
-                <View className='w-full flex-row items-center justify-between bg-transparent'>
-                  <MediaPicker
+                <View className={!isRrecording ? 'flex-row w-full justify-between items-center bg-transparent' : 'flex-row w-full justify-center items-center bg-transparent'}>
+                  {!isRrecording && <MediaPicker
                     images={images}
                     setImages={setImages}
                     setPreviewVisible={setPreviewVisible}
-                  />
+                  />}
                   <TouchableOpacity
                     delayLongPress={150}
                     className={
                       isRrecording === false
-                        ? "flex justify-center items-center h-[65px] w-[65px] border-[3px] border-white active:bg-white/20 rounded-full self-end items-center"
-                        : "flex justify-center opacity-100 group-isolate items-center h-[75px] w-[75px] border-[3px] border-white rounded-full self-end items-center"
+                        ? "flex justify-center items-center h-[65px] w-[65px] border-[1.5px] border-white rounded-full self-end items-center"
+                        : "flex justify-center opacity-100 items-center h-[75px] w-[75px] border-[2px] border-white rounded-full self-end items-center"
                     }
-                    onPress={takePicture}
+                    onPress={() => isRrecording ? stopVideo() : takeVideo()}
                     onLongPress={takeVideo}
                     onPressOut={stopVideo}
                   >
                     <View
                       className={
                         isRrecording === false
-                          ? "bg-white w-12 h-12 rounded-full"
-                          : "bg-blue-600 w-9 h-9 rounded-full"
+                          ? "bg-red-600 w-[55px] h-[55px] justify-center items-center rounded-full"
+                          : "bg-red-600 w-9 justify-center items-center h-9 rounded-full"
                       }
-                    />
+                    >
+                      {!isRrecording && <Ionicons size={24} name="videocam" color="white" />} 
+                    </View>
                   </TouchableOpacity>
-                  <TouchableOpacity
+                  {!isRrecording && <TouchableOpacity
                     className='items-center w-12 h-12 justify-center bg-gray-900/50 rounded-full'
                     onPress={toggleCameraType}
                   >
@@ -220,7 +205,7 @@ export default function QSCamera({ handleBack }) {
                       size={25}
                       color='white'
                     />
-                  </TouchableOpacity>
+                  </TouchableOpacity>}
                 </View>
               </View>
             </Camera>

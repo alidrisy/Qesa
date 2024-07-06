@@ -1,62 +1,78 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import {
-  RefreshControl,
-  PanResponder,
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-} from "react-native";
-import VideoComponent from "../../components/VideoComponent";
-import PagerView from "react-native-pager-view";
-import { _handleFetchVideosAsync, videos } from "../../constants/video";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { View, Text, Pressable, FlatList } from "react-native";
+import VideoComponent from "../../components/feedsComponents/VideoComponent";
+import { _handleFetchVideosAsync } from "../../constants/video";
 import { usePathname } from "expo-router";
+import { useAuth } from "../../context/AuthProvider";
+import axios from "../../api/axios";
 
 const Home = () => {
-  const [refreshing, setRefreshing] = useState(false);
-  const [page, setPage] = useState(0);
-  // const [videos, setVideos] = useState([]);
+  const [page, setPage] = useState(1);
   const [tag, setTag] = useState(0);
-  const [currentViewableItemIndex, setCurrentViewableItemIndex] = useState(0);
+  const pathname = usePathname();
+  const { authState, videos, setVideos } = useAuth();
+  const [lastIndex, setLastIndex] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [itemHeight, setItemHeight] = useState(0);
+  const visibleRef = useRef({});
 
-  const viewabilityConfig = { viewAreaCoveragePercentThreshold: 50 };
-  const onViewableItemsChanged = ({ viewableItems }) => {
-    console.log("hi");
-    if (viewableItems.length > 0) {
-      setCurrentViewableItemIndex(viewableItems[0].index ?? 0);
+  if (!videos.length) return null;
+
+  const getVideos = async (page, refreshing) => {
+    const url = `/videos`;
+    try {
+      const res = await axios.get(url, {
+        params: {
+          page,
+        },
+      });
+      if (!refreshing) {
+        setVideos([...videos, ...res.data]);
+      } else {
+        setVideos(res.data);
+      }
+      setPage(page + 1);
+      setIsRefreshing(false);
+      return true;
+    } catch (error) {
+      setIsRefreshing(false);
+      return false;
     }
   };
 
-  const pathname = usePathname();
-
-  // Track the location in your analytics provider here.
   useEffect(() => {
     if (pathname !== "/MainScreen") {
-      setPage(currentViewableItemIndex);
-      setCurrentViewableItemIndex(-1);
-      console.log(pathname);
+      visibleRef.current[`REF-FLATLIST${lastIndex}`]?.playThisVideo(false);
     } else {
-      setCurrentViewableItemIndex(page);
+      visibleRef.current[`REF-FLATLIST${lastIndex}`]?.playThisVideo(true);
     }
   }, [pathname]);
-  const panResponder = useRef(
-    PanResponder.create({
-      onPanResponderMove: (e, gestureState) => {
-        console.log(Math.max(gestureState.dy, 0));
-      },
-    }),
-  ).current;
 
-  const viewabilityConfigCallbackPairs = useRef([
-    { viewabilityConfig, onViewableItemsChanged },
-  ]);
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
+  const onViewableItemsChanged = useCallback(({ viewableItems, changed }) => {
+    const visibleIndex = viewableItems[0]?.index;
+    const previousIndex = changed[1]?.index;
+    if (visibleIndex !== undefined) {
+      visibleRef.current[`REF-FLATLIST${visibleIndex}`]?.playThisVideo(true);
+      setLastIndex(visibleIndex);
+    }
+    if (previousIndex !== undefined) {
+      visibleRef.current[`REF-FLATLIST${previousIndex}`]?.playThisVideo(false);
+    }
   }, []);
+
+  const viewabilityConfig = {
+    itemVisiblePercentThreshold: 50,
+  };
+
+  const fetchHomeFeed = async (page, refreshing) => {
+    console.log("ends");
+    await getVideos(page, refreshing);
+  };
+
+  const refreshStreamData = () => {
+    setIsRefreshing(true);
+    fetchHomeFeed(0, true);
+  };
 
   return (
     <View className='relative flex-1'>
@@ -104,30 +120,43 @@ const Home = () => {
           </Text>
         </Pressable>
       </View>
-      <RefreshControl
-        className='flex-1'
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        progressViewOffset={130}
-      >
-        <PagerView
-          key={0}
-          onPageSelected={(e) =>
-            setCurrentViewableItemIndex(e.nativeEvent.position)
-          }
-          className='flex-1 bg-stone-950'
-          orientation={"vertical"}
-          initialPage={0}
-        >
-          {videos.map((item, index) => (
+      <FlatList
+        className='flex-1 bg-stone-950'
+        onLayout={(e) => setItemHeight(e.nativeEvent.layout.height)}
+        contentContainerStyle={{ flexGrow: 1 }}
+        data={videos}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        removeClippedSubviews
+        keyExtractor={(item) => item.id}
+        pagingEnabled
+        initialNumToRender={2}
+        maxToRenderPerBatch={1}
+        updateCellsBatchingPeriod={30}
+        minDiffToRecomputeFrames={500}
+        windowSize={4}
+        decelerationRate='fast'
+        showsVerticalScrollIndicator={false}
+        onEndReachedThreshold={1.9}
+        onEndReached={() => fetchHomeFeed(page, false)}
+        refreshing={isRefreshing}
+        onRefresh={refreshStreamData}
+        snapToAlignment='start'
+        horizontal={false}
+        snapToStart={true}
+        lazyLoading={true}
+        renderItem={({ item, index }) => (
+          <View style={{ height: itemHeight, width: "100%" }}>
             <VideoComponent
               key={index}
-              shouldPlay={index === currentViewableItemIndex}
-              videoSource={item}
+              video={item}
+              ref={(ref) => {
+                visibleRef.current[`REF-FLATLIST${index}`] = ref;
+              }}
             />
-          ))}
-        </PagerView>
-      </RefreshControl>
+          </View>
+        )}
+      />
     </View>
   );
 };

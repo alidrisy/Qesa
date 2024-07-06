@@ -2,15 +2,11 @@ import { Tabs } from "expo-router";
 import { View } from "react-native";
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import * as NavigationBar from 'expo-navigation-bar';
-import { useState } from "react";
-import { enableScreens } from "react-native-screens";
-
-enableScreens();
 
 const TabsLayout = () => {
   NavigationBar.setBackgroundColorAsync('#0c0a09')
   return (
-    <Tabs  detachInactiveScreens={true} screenOptions={{
+    <Tabs   screenOptions={{
       tabBarHideOnKeyboard: true,
       tabBarStyle: {height: 65, position: "relative"},
       tabBarLabelStyle: {paddingBottom: 8, marginTop: -10},
@@ -71,9 +67,12 @@ const TabsLayout = () => {
         );
       },
         tabBarActiveTintColor: "black",
+        headerShown: false,
       }}/>
     </Tabs>
   );
 };
+
+
 
 export default TabsLayout;

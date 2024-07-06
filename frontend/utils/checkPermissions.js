@@ -1,5 +1,5 @@
 import { Alert } from "react-native";
-import {
+import Camera, {
   getCameraPermissionsAsync,
   getMicrophonePermissionsAsync,
 } from "expo-camera";

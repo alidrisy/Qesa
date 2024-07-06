@@ -20,6 +20,7 @@ class Video(BaseModel, mongoengine.Document):
     creator = mongoengine.ReferenceField(
         "User", required=True, reverse_delete_rule=mongoengine.CASCADE
     )
+    user_id = mongoengine.StringField(required=True)
     tags = mongoengine.ListField(mongoengine.StringField(), default=[])
     likes = mongoengine.IntField(default=0)
     bookmarks = mongoengine.IntField(default=0)
@@ -63,4 +64,15 @@ class Video(BaseModel, mongoengine.Document):
         Like.objects(video_id=self.id).delete()
         return super().delete()
 
-    meta = {"collection": "videos", "alias": "core", "indexes": ["creator"]}
+    meta = {
+        "collection": "videos",
+        "alias": "core",
+        "indexes": ["creator"],
+        "ordering": [
+            "-views",
+            "-likes",
+            "-comments",
+            "-bookmarks",
+            "-shares",
+        ],
+    }

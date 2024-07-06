@@ -18,7 +18,9 @@ web-build/
 
 # Metro
 .metro-health-check*
-backend/
+__pycache__/
+.env
+.vscode/
 # debug
 npm-debug.*
 yarn-debug.*

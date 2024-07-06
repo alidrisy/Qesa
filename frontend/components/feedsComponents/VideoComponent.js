@@ -8,7 +8,15 @@ import {
   Image,
 } from "react-native";
 import { Video, ResizeMode } from "expo-av";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useCallback,
+  useRef,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+  memo,
+} from "react";
 import {
   MaterialIcons,
   Fontisto,
@@ -27,6 +35,9 @@ import InfoBar from "./InfoBar";
 import SeekBar from "./SeekBar";
 import { Share } from "react-native";
 import Comments from "./Comments";
+import { useAuth } from "../../context/AuthProvider";
+import SignUpDrawer from "../Drawer";
+import formatNumber from "../../utils/formatNumbers";
 
 let timer = null;
 const TIMEOUT = 200;
@@ -44,20 +55,27 @@ const debounce = (onSingle, onDouble) => {
   }
 };
 
-const VideoComponent = ({ shouldPlay, videoSource }) => {
-  const video = useRef();
+const VideoComponent = forwardRef(({ video }, ref) => {
+  const videoRef = useRef(null);
+  const signupDrawerRef = useRef(null);
   const commentsDrawerRef = useRef(null);
   const [status, setStatus] = useState();
   const [tap, setTap] = useState("...");
-  const [vidId, setVidId] = useState(null);
 
   const [isLiked, setIsLiked] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [pause, setPause] = useState(true);
 
   const likeImageOpacity = useSharedValue(0);
   const likeIconScale = useSharedValue(1);
   const likeImageScale = useSharedValue(0);
+  const { authState } = useAuth();
+
+  const playThisVideo = useCallback((play) => {
+    setPause(!play);
+    videoRef.current.setPositionAsync(0);
+  }, []);
 
   const iconLikeStyle = useAnimatedStyle(() => {
     return {
@@ -65,9 +83,25 @@ const VideoComponent = ({ shouldPlay, videoSource }) => {
     };
   });
 
+  useEffect(() => {
+    if (videoRef.current) {
+      if (pause) {
+        videoRef.current.pauseAsync();
+      } else {
+        videoRef.current.playAsync();
+        const state = videoRef.current.getStatusAsync();
+        setDuration(state.durationMillis);
+      }
+    }
+  }, [pause]);
+
   function likePost() {
     setIsLiked((prev) => !prev);
   }
+
+  useImperativeHandle(ref, () => ({
+    playThisVideo,
+  }));
 
   const imgLikeStyle = useAnimatedStyle(() => {
     return {
@@ -105,6 +139,9 @@ const VideoComponent = ({ shouldPlay, videoSource }) => {
   };
 
   const handleLikePostIndicator = () => {
+    if (authState.token === null) {
+      return signupDrawerRef.current.open();
+    }
     likeIconScale.value = withSpring(
       0.5,
       {
@@ -139,42 +176,29 @@ const VideoComponent = ({ shouldPlay, videoSource }) => {
     }, 2000);
   }, [tap]);
 
-  const onSingleTap = () => {
+  const onSingleTap = useCallback(() => {
     if (status.isPlaying) {
-      video.current.pauseAsync();
+      setPause(true);
+      videoRef.current.pauseAsync();
     } else {
-      video.current.playAsync();
+      setPause(false);
+      videoRef.current.playAsync();
     }
-  };
-  const onDoubleTap = () => {
+  });
+  const onDoubleTap = useCallback(() => {
     setTap("double tap");
     handleLikePostIndicator();
     handleLikePost();
-  };
+  });
 
   const handlePress = () => {
     debounce(onSingleTap, onDoubleTap);
   };
 
-  useEffect(() => {
-    if (!video.current) return;
-    const playVideo = async () => {
-      if (shouldPlay) {
-        await video.current.playAsync();
-        const state = await video.current.getStatusAsync();
-        setDuration(state.durationMillis);
-      } else {
-        await video.current.pauseAsync();
-        await video.current.setPositionAsync(0);
-      }
-    };
-    playVideo();
-  }, [shouldPlay]);
-
   const onValueChange = async (e) => {
     setProgress(e);
     if (status.isPlaying) {
-      await video.current.playFromPositionAsync(e);
+      await videoRef.current.playFromPositionAsync(e);
     }
   };
 
@@ -187,7 +211,7 @@ const VideoComponent = ({ shouldPlay, videoSource }) => {
     const shareAction = await Share.share(
       {
         title: "Test video",
-        message: "Qesa | A time wasting application" + "\n" + videoSource,
+        message: "Qesa | A time wasting application" + "\n" + video.video_url,
       },
       { dialogTitle: "Send to" },
     );
@@ -195,9 +219,12 @@ const VideoComponent = ({ shouldPlay, videoSource }) => {
 
   return (
     <Pressable onPress={handlePress} className='flex-1'>
-      <Comments commentsDrawerRef={commentsDrawerRef} />
+      <Comments
+        commentsDrawerRef={commentsDrawerRef}
+        signupDrawerRef={signupDrawerRef}
+      />
       <View style={styles.videoContainer}>
-        {!status?.isPlaying && (
+        {pause && (
           <View className='absolute z-30'>
             <Ionicons
               name='play'
@@ -208,9 +235,12 @@ const VideoComponent = ({ shouldPlay, videoSource }) => {
           </View>
         )}
         <Video
-          ref={video}
+          ref={videoRef}
+          shouldPlay={!pause}
           source={{
-            uri: videoSource,
+            uri:
+              video?.video_url ||
+              "file:///data/user/0/host.exp.exponent/cache/ExperienceData/%2540anonymous%252Fqesa-f780b699-6a14-44fd-a606-c83b0b6b87f7/ImagePicker/9b4323e8-f6ae-4fd9-968c-78cfbd252fec.mp4",
           }}
           className='h-full'
           isLooping
@@ -244,7 +274,7 @@ const VideoComponent = ({ shouldPlay, videoSource }) => {
                 color={isLiked ? "#e11d48" : "#f3f4f6"}
               />
             </Animated.View>
-            <Text className='text-white'>500</Text>
+            <Text className='text-white'>{formatNumber(video.likes)}</Text>
           </Pressable>
           <Pressable
             onPress={() => commentsDrawerRef.current.open()}
@@ -255,14 +285,14 @@ const VideoComponent = ({ shouldPlay, videoSource }) => {
               size={30}
               color='#f3f4f6'
             />
-            <Text className='text-white'>0</Text>
+            <Text className='text-white'>{formatNumber(video.comments)}</Text>
           </Pressable>
           <Pressable
             onPress={handleShare}
             className='flex items-center justify-center space-y-[4px]'
           >
             <Fontisto name='share-a' size={22} color='#f3f4f6' />
-            <Text className='text-white'>0</Text>
+            <Text className='text-white'>{formatNumber(video.shares)}</Text>
           </Pressable>
           <Pressable className='flex items-center justify-center'>
             <AntDesign name='ellipsis1' size={30} color='#f3f4f6' />
@@ -271,13 +301,11 @@ const VideoComponent = ({ shouldPlay, videoSource }) => {
         </View>
         <InfoBar
           ifo={{
-            title: "harry potter #imSorry something-else and so on",
-            views: "20k",
-            creator: {
-              username: "@alidrisy",
-              imageUrl: "https://avatars.githubusercontent.com/u/114399659?v=4",
-            },
+            title: video.description,
+            views: formatNumber(video.views),
+            creator: video?.creator,
           }}
+          signupDrawerRef={signupDrawerRef}
         />
         <SeekBar
           onValueChange={onValueChange}
@@ -292,7 +320,7 @@ const VideoComponent = ({ shouldPlay, videoSource }) => {
       />
     </Pressable>
   );
-};
+});
 
 const styles = StyleSheet.create({
   videoContainer: {
@@ -306,4 +334,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default VideoComponent;
+export default memo(VideoComponent);

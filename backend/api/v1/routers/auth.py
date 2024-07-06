@@ -16,17 +16,17 @@ class SginupUser(BaseModel):
     username: str
     password: str
     first_name: str
+    birth_date: datetime
     last_name: str | None = None
     profile_picture: str | None = None
     bio: str | None = None
 
 
-@router.post("/sginup", tags=["auth"])
-async def create_user(
-    user: SginupUser, background_tasks: BackgroundTasks
-) -> JSONResponse:
+@router.post("/signup", tags=["auth"])
+def create_user(user: SginupUser, background_tasks: BackgroundTasks) -> JSONResponse:
     """Create a new user."""
     try:
+        print(user)
         user_data = user.dict()
         user_data["password"] = get_password_hash(user_data["password"])
         new_user = User(**user_data)
@@ -47,7 +47,7 @@ async def create_user(
         if "username" in str(e):
             return JSONResponse(
                 {"error": "username is already exists try to use another one"},
-                status_code=400,
+                status_code=422,
             )
         if "email" in str(e):
             raise HTTPException(status_code=422, detail="User already exists")
@@ -57,26 +57,39 @@ async def create_user(
         )
 
 
+class LoginUser(BaseModel):
+    """LoginUser user schema."""
+
+    username: str
+    password: str
+
+
 @router.post("/login", tags=["auth"])
-async def login_user(
+def login_user(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     background_tasks: BackgroundTasks,
 ) -> Token:
-    """Login user."""
+    """Login user.""" * 9
     try:
+        print(form_data.__dict__)
         if form_data.username:
             user = authenticate_user(
                 {"username": form_data.username}, form_data.password
             )
-        if not user:
-            user = authenticate_user({"email": form_data.username}, form_data.password)
+            if not user:
+                user = authenticate_user(
+                    {"email": form_data.username}, form_data.password
+                )
 
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect username or password",
+            return JSONResponse(
+                {
+                    "message": "Incorrect username or password",
+                },
+                status_code=401,
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
         if not user.is_validated:
             validate_id = generate_verification_code()
             user_id = user.to_dict()["id"]
@@ -86,6 +99,7 @@ async def login_user(
                 {
                     "message": "We have sent you a verification email. Please check your inbox and follow the instructions to verify your email address.",
                     "email": user.email,
+                    status: "unverified",
                 },
             )
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -108,15 +122,13 @@ class Virifcation(BaseModel):
 
 
 @router.post("/verification", tags=["auth"])
-async def verification_email(validation: Virifcation, email: str) -> Token:
+def verification_email(validation: Virifcation, email: str) -> Token:
     """Verify user email."""
     try:
         validation_id = validation.validation_id
         user = get_user({"email": email})
-        print(user.to_dict())
         vald_id = redis_client.get(user.to_dict()["id"])
-        print(validation_id, vald_id)
-        print(validation_id != vald_id)
+        print(vald_id, validation_id)
         if validation_id != vald_id:
             return JSONResponse(
                 {
@@ -200,6 +212,33 @@ async def logout_user(
         current_user.is_validated = False
         current_user.save()
         return JSONResponse({"message": "Successfully logged out."}, status_code=200)
+
+    except Exception as e:
+        print(e)
+        return JSONResponse(
+            {"error": "Something went wrong, try again later."},
+            status_code=500,
+        )
+
+
+class CheckUser(BaseModel):
+    """Logout user schema."""
+
+    username: str
+
+
+@router.post("/check-username", tags=["auth"])
+async def check_username(
+    check_data: CheckUser,
+) -> JSONResponse:
+    """Logout user."""
+
+    try:
+        username = check_data.username
+
+        is_valid = User.objects(username=username).count() <= 0
+
+        return JSONResponse({"isValid": is_valid})
 
     except Exception as e:
         print(e)

@@ -46,42 +46,25 @@ async def create_video(
 
 @router.get("/videos", tags=["videos"])
 async def get_videos(
-    page: int,
-    limit: int,
-    user: Annotated[User, Depends(get_current_user)],
+    page: int = 0,
+    limit: int = 10,
+    user_id: str | None = None,
 ):
     """Logic to retrieve all videos"""
-    print(user.to_dict())
     try:
-        videos = Video.objects().skip(page * limit).limit(limit)
+        print("hi")
+        if user_id:
+            videos = Video.objects(user_id=user_id).skip(page * limit).limit(limit)
+            print(videos)
+        else:
+            videos = Video.objects().skip(page * limit).limit(limit)
+        print(videos)
         all_videos = []
         if not videos:
             return JSONResponse({"error": "No videos found for now."}, status_code=404)
         for video in videos:
-            all_videos.append(video.to_dict(user))
-        return JSONResponse(all_videos)
-    except Exception as e:
-        print(e)
-        return JSONResponse(
-            {"error": "something went wrong try again later"},
-            status_code=500,
-        )
-
-
-@router.get("/videos/{username}", tags=["videos"])
-def get_user_videos(username: str, page: int, limit: int, user_id: str | None = None):
-    """Get a specific user videos."""
-    try:
-        print(username)
-        user_id = get_user_id({"username": username})
-        videos = Video.objects(user_id=user_id).skip(page * limit).limit(limit)
-        if not videos:
-            return JSONResponse(
-                {"error": "No videos found for this user."}, status_code=404
-            )
-        all_videos = []
-        for video in videos:
             all_videos.append(video.to_dict())
+
         return JSONResponse(all_videos)
     except Exception as e:
         print(e)

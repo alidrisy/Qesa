@@ -1,20 +1,26 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
-  Button,
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
+  TextInput,
 } from "react-native";
-import BottomDrawer, {
-  BottomDrawerMethods,
-} from "react-native-animated-bottom-drawer";
-import CustomInputField from "./CustomInputField";
+import BottomDrawer from "react-native-animated-bottom-drawer";
+import { useAuth } from "../../context/AuthProvider";
 
-const Comments = ({ commentsDrawerRef }) => {
+const Comments = ({ commentsDrawerRef, signupDrawerRef }) => {
   const [comment, setComment] = useState("");
+  const { authState } = useAuth();
+
+  handleAuth = () => {
+    if (!authState.token) {
+      commentsDrawerRef.current.close();
+      signupDrawerRef.current.open();
+      return;
+    }
+  };
+
   return (
     <BottomDrawer
       enableSnapping
@@ -27,7 +33,6 @@ const Comments = ({ commentsDrawerRef }) => {
       </View>
       <KeyboardAvoidingView
         keyboardVerticalOffset={12}
-        contentContainerStyle={{}}
         behavior='position'
         className='flex-1  relative overflow-hidden'
       >
@@ -45,11 +50,13 @@ const Comments = ({ commentsDrawerRef }) => {
             <Text className='self-center pt-[230px]'>No comments yet</Text>
           </ScrollView>
         </View>
-        <View className='bottom-[24px] bg-white justify-start p-0 h-[70px] w-full border-t-[0.5px] border-[#8E8E8f]'>
-          <CustomInputField
-            input={comment}
-            setInput={setComment}
+        <View className='bottom-[24px] bg-white jusify-center items-center py-2 px-3 h-[70px] w-full border-t border-[#8E8E8f]/20'>
+          <TextInput
+            value={comment}
+            onChangeText={setComment}
             placeholder='Add Comment'
+            className='w-full bg-gray-200/60 rounded-full flex p-2 '
+            onPressIn={handleAuth}
           />
         </View>
       </KeyboardAvoidingView>

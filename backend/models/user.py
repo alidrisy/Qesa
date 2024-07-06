@@ -12,23 +12,28 @@ class User(BaseModel, mongoengine.Document):
     username = mongoengine.StringField(required=True, unique=True)
     password = mongoengine.StringField(required=True)
     first_name = mongoengine.StringField(required=True)
-    last_name = mongoengine.StringField(required=True)
+    last_name = mongoengine.StringField(default="")
+    birth_date = mongoengine.DateTimeField(required=True)
     profile_picture = mongoengine.StringField(default="")
     bio = mongoengine.StringField(default="")
     followers = mongoengine.IntField(default=0)
     following = mongoengine.IntField(default=0)
     is_validated = mongoengine.BooleanField(default=False)
 
-    def to_dict(self):
+    def to_dict(self, target=None):
         """Convert the model to a dictionary."""
         user_data = self.to_mongo().to_dict()
         user_data["id"] = str(user_data["_id"])
         user_data.pop("_id")
         if "password" in user_data:
             user_data.pop("password")
-
+        if target and target.id == self.id:
+            user_data["birth_date"] = user_data["birth_date"].strftime(time)
+        else:
+            user_data.pop("birth_date")
         user_data["created_date"] = user_data["created_date"].strftime(time)
         user_data["updated_date"] = user_data["updated_date"].strftime(time)
+        user_data["is_follow"] = self.is_follow(target) if target else False
         return user_data
 
     def to_dict_summary(self, target=None):
@@ -38,7 +43,7 @@ class User(BaseModel, mongoengine.Document):
             "id": str(user_data["_id"]),
             "username": user_data["username"],
             "profile_picture": user_data["profile_picture"],
-            "is_follow": self.is_follow(target),
+            "is_follow": self.is_follow(target) if target else False,
         }
 
     def update_model(self, **kwargs):
@@ -54,7 +59,10 @@ class User(BaseModel, mongoengine.Document):
         """Check if the video is liked by the user."""
         from models.follow import Follow
 
-        return Follow.objects(follower=self, following=target).count() > 0
+        if target and target.id == self.id:
+            return True
+        else:
+            return Follow.objects(follower=self, following=target).count() > 0
 
     meta = {
         "collection": "users",
