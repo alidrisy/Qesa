@@ -10,7 +10,7 @@ import {
   checkStoragePermission,
 } from "../../utils/checkPermissions";
 import PermissionAlert from "../../components/PermissionAlert";
-import QSCamera from "../../components/Camera";
+import QSCamera from "../../components/newPostComponents/Camera";
 
 const Add = () => {
   const [modalVis, setModalVis] = useState(false);

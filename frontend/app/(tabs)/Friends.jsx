@@ -1,5 +1,4 @@
 import { StyleSheet, View, RefreshControl, ActivityIndicator } from 'react-native';
-import PagerView from 'react-native-pager-view';
 
 export default function MyPager() {
   return (
@@ -9,13 +8,3 @@ export default function MyPager() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  page: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});

@@ -20,7 +20,8 @@ const User = () => {
 
   useEffect(() => {
     const fetchUser = async () => {
-      if (user.id === id) {
+      console.log();
+      if (user?.id === id) {
         setUserData(user);
         setMe(true);
         return;
